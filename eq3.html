@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        background-color: #000000;
+        margin: 0px;
+        overflow: hidden;
+      }
+
+      #info {
+        position: absolute;
+        top: 0px;
+        width: 100%;
+        color: #ffffff;
+        padding: 5px;
+        font-family: Monospace;
+        font-size: 13px;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      a {
+        color: #ffffff;
+      }
+    </style>
+    <title>Three.js Virtual Tour</title>
+  </head>
+  <body>
+    <div id="container"></div>
+    <div id="info">
+      <a href="/">Main page</a> |
+      <a href="/ply_loader/1187.html">Go to PLY loader page</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+      let camera, scene, renderer;
+      let isUserInteracting = false,
+        onPointerDownPointerX = 0,
+        onPointerDownPointerY = 0,
+        lon = 0,
+        onPointerDownLon = 0,
+        lat = 0,
+        onPointerDownLat = 0;
+
+      let markerObjects = [];
+
+      const panoramas = {
+        panorama0: {
+          image: "models/equirectangular0.jpg",
+          markers: [
+            { lat: -50, lon: 10, to: "panorama1" },
+            { lat: -30, lon: 9, to: "panorama2" },
+            { lat: -20, lon: 10, to: "panorama3" },
+          ],
+        },
+        panorama1: {
+          image: "models/equirectangular1.jpg",
+          markers: [
+            { lat: 224, lon: 10, to: "panorama0" },
+            { lat: -50, lon: 9, to: "panorama2" },
+            { lat: -33, lon: 10, to: "panorama3" },
+          ],
+        },
+        panorama2: {
+          image: "models/equirectangular2.jpg",
+          markers: [
+            { lat: 210, lon: 5, to: "panorama0" },
+            { lat: 234, lon: 10, to: "panorama1" },
+            { lat: -43, lon: 10, to: "panorama3" },
+          ],
+        },
+        panorama3: {
+          image: "models/equirectangular3.jpg",
+          markers: [
+            { lat: 200, lon: 0, to: "panorama0" },
+            { lat: 210, lon: 5, to: "panorama1" },
+            { lat: 235, lon: 5, to: "panorama2" },
+          ],
+        },
+      };
+
+      let currentPanorama = "panorama0";
+
+      init();
+
+      // Настройка OrbitControls
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true; // Включить инерцию
+      controls.dampingFactor = 0.25;
+      controls.screenSpacePanning = false;
+      controls.minDistance = 1;
+      controls.maxDistance = 500;
+      controls.maxPolarAngle = Math.PI / 2;
+
+      animate();
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      function init() {
+        const container = document.getElementById("container");
+
+        camera = new THREE.PerspectiveCamera(
+          75,
+          window.innerWidth / window.innerHeight,
+          1,
+          1100
+        );
+        camera.target = new THREE.Vector3(0, 0, 0);
+
+        scene = new THREE.Scene();
+
+        const geometry = new THREE.SphereGeometry(500, 60, 40);
+        geometry.scale(-1, 1, 1);
+
+        const material = new THREE.MeshBasicMaterial({
+          map: new THREE.TextureLoader().load(panoramas[currentPanorama].image),
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        addMarkers(panoramas[currentPanorama].markers);
+
+        window.addEventListener("resize", onWindowResize, false);
+        window.addEventListener("mousedown", onDocumentMouseDown, false);
+        window.addEventListener("mousemove", onDocumentMouseMove, false);
+        window.addEventListener("mouseup", onDocumentMouseUp, false);
+        window.addEventListener("wheel", onDocumentMouseWheel, {
+          passive: true,
+        });
+        window.addEventListener("mousedown", onMouseDown, false); // Привязка события mousedown к onMouseDown
+      }
+
+      function addMarkers(markers) {
+        markers.forEach((marker) => {
+          const markerGeometry = new THREE.SphereGeometry(10, 32, 32);
+          const markerMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff0000,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.5,
+          });
+          const markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
+
+          const markerLat = marker.lat;
+          const markerLon = marker.lon;
+          const markerPhi = THREE.Math.degToRad(90 - markerLat);
+          const markerTheta = THREE.Math.degToRad(markerLon);
+
+          markerMesh.position.x =
+            500 * Math.sin(markerPhi) * Math.cos(markerTheta);
+          markerMesh.position.y = 500 * Math.cos(markerPhi);
+          markerMesh.position.z =
+            500 * Math.sin(markerPhi) * Math.sin(markerTheta);
+
+          markerMesh.userData.to = marker.to;
+
+          scene.add(markerMesh);
+          markerObjects.push(markerMesh);
+        });
+      }
+
+      function removeMarkers() {
+        markerObjects.forEach((marker) => scene.remove(marker));
+        markerObjects = [];
+      }
+
+      function switchPanorama(panorama) {
+        removeMarkers();
+        const material = scene.children.find((child) => child.isMesh).material;
+        material.map = new THREE.TextureLoader().load(
+          panoramas[panorama].image
+        );
+        material.needsUpdate = true;
+
+        addMarkers(panoramas[panorama].markers);
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      function onDocumentMouseDown(event) {
+        event.preventDefault();
+        isUserInteracting = true;
+        onPointerDownPointerX = event.clientX;
+        onPointerDownPointerY = event.clientY;
+        onPointerDownLon = lon;
+        onPointerDownLat = lat;
+      }
+
+      function onDocumentMouseMove(event) {
+        if (isUserInteracting) {
+          lon =
+            (onPointerDownPointerX - event.clientX) * 0.1 + onPointerDownLon;
+          lat =
+            (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
+        }
+      }
+
+      function onDocumentMouseUp() {
+        isUserInteracting = false;
+      }
+
+      function onDocumentMouseWheel(event) {
+        camera.fov += event.deltaY * 0.05;
+        camera.updateProjectionMatrix();
+      }
+
+      // function update() {
+      //   if (!isUserInteracting) {
+      //     lon += 0.1;
+      //   }
+
+      //   lat = Math.max(-85, Math.min(85, lat));
+      //   const phi = THREE.Math.degToRad(90 - lat);
+      //   const theta = THREE.Math.degToRad(lon);
+
+      //   camera.target.x = 500 * Math.sin(phi) * Math.cos(theta);
+      //   camera.target.y = 500 * Math.cos(phi);
+      //   camera.target.z = 500 * Math.sin(phi) * Math.sin(theta);
+
+      //   camera.lookAt(camera.target);
+      //   renderer.render(scene, camera);
+      // }
+
+      function onMouseDown(event) {
+        event.preventDefault();
+
+        const mouse = new THREE.Vector2(
+          (event.clientX / window.innerWidth) * 2 - 1,
+          -(event.clientY / window.innerHeight) * 2 + 1
+        );
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObjects(markerObjects);
+
+        if (intersects.length > 0) {
+          const intersected = intersects[0].object;
+          const targetPanorama = intersected.userData.to;
+          console.log("Marker clicked:", intersected);
+          if (targetPanorama) {
+            currentPanorama = targetPanorama;
+            switchPanorama(currentPanorama);
+          }
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLY Loader</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #info {
+    position: absolute;
+    top: 0px; width: 100%;
+    color: #ffffff;
+    padding: 5px;
+    font-family:Monospace;
+    font-size:13px;
+    font-weight: bold;
+    text-align:center;
+}
+
+a {
+    color: #ffffff;
+}
+    </style>
+</head>
+<body>
+    <div id="info">
+        <a href="/">Go to main page</a> | 
+        <a href="/eq.html">Go to Panorama Equirectangular page</a>
+        <br>
+        <a href="/ply_loader/1187.html">Go to 1187</a> |
+        <a href="/ply_loader/1188.html">Go to 1188</a> |
+        1189 
+    </div>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Инициализация сцены, камеры и рендера
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Добавление света
+		var keyLight = new THREE.DirectionalLight(new THREE.Color('hsl(255, 100%, 100%)'), 1.0);
+		keyLight.position.set(100, 100, -100);
+
+		var fillLight = new THREE.DirectionalLight(new THREE.Color('hsl(255, 100%, 100%)'), 1.0);
+		fillLight.position.set(-100, -100, 100);
+
+		var backLight = new THREE.DirectionalLight(0xffffff, 1.0);
+		backLight.position.set(50, -100, 100).normalize();
+
+		scene.add(keyLight);
+		scene.add(fillLight);
+		scene.add(backLight);
+
+        // Загрузка PLY файла
+        const loader = new THREE.PLYLoader();
+        loader.load('/models/1089/1189_1024_with_ceiling.ply', function (geometry) {
+            geometry.computeVertexNormals();
+
+            // Проверка наличия цветов и добавление их в атрибуты геометрии
+            let material;
+            if (geometry.hasAttribute('color')) {
+                material = new THREE.MeshStandardMaterial({ vertexColors: true });
+            } else {
+                material = new THREE.MeshStandardMaterial({ color: 0x0055ff });
+            }
+
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+            mesh.position.set(0, 0, 0);
+            mesh.rotation.set(-Math.PI / 2, 0, 0);  // При необходимости можно изменить поворот
+        });
+
+        // Позиционирование камеры
+        camera.position.z = 5;
+
+        // Настройка OrbitControls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // Включить инерцию
+        controls.dampingFactor = 0.25;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 1;
+        controls.maxDistance = 500;
+        controls.maxPolarAngle = Math.PI / 2;
+
+        // Анимация
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // Обновление контролов
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Обновление рендера при изменении размера окна
+        window.addEventListener('resize', function () {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
