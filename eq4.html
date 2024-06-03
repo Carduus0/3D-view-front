@@ -40,7 +40,7 @@
         text-align: center;
         cursor: pointer;
       }
-      #clear {
+      #lineClear {
         width: 30px;
         height: 20px;
         border: none;
@@ -59,8 +59,8 @@
   <body>
     <div id="container"></div>
     <div id="info">
-      <button id="rouletteOnOff" class="roulette__on-off">roulette</button>
-      <button id="clear">Clear</button>
+      <button id="rouletteModeOnOff" class="roulette__on-off">roulette</button>
+      <button id="lineClear">Clear</button>
       <a href="/">Main page</a> |
       <a href="/ply_loader/1187.html">Go to PLY loader page</a>
     </div>
@@ -78,6 +78,9 @@
         onPointerDownLat = 0;
       let markerObjects = [];
       let rouletteMode = false;
+      let rouletteMarkers = [];
+      let points = [];
+      let line;
 
       const panoramas = {
         panorama0: {
@@ -117,67 +120,6 @@
       let currentPanorama = "panorama0";
 
       init();
-
-      document.getElementById("rouletteOnOff").addEventListener("click", () => {
-        console.log("rouletteOnOff");
-
-        rouletteMode = !rouletteMode;
-      });
-      document.getElementById("clear").addEventListener("click", () => {
-        if (line) {
-          scene.remove(line);
-          line = null;
-          points = [];
-        }
-      });
-      let points = [];
-      let line;
-
-      scene.addEventListener("click", (event) => {
-        if (!rouletteMode) return;
-        console.log("scene click");
-
-        // Получите координаты точки на сцене, где был сделан клик мыши
-        let point = getPointFromClick(event);
-        console.log("point", point);
-
-        points.push(point);
-
-        // Если у нас уже есть две точки, создайте линию между ними
-        if (points.length === 2) {
-          line = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints(points),
-            new THREE.LineBasicMaterial({ color: 0xff0000 })
-          );
-          scene.add(line);
-        }
-      });
-
-      function getPointFromClick(event) {
-        // Создайте Raycaster и вектор мыши
-        let raycaster = new THREE.Raycaster();
-        let mouse = new THREE.Vector2();
-
-        // Преобразуйте координаты мыши в нормализованные координаты от -1 до 1
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        // Обновите луч с новыми координатами мыши
-        raycaster.setFromCamera(mouse, camera);
-
-        // Получите список объектов, которые пересекаются с лучом
-        let intersects = raycaster.intersectObjects(scene.children);
-
-        // Если луч пересекает какой-либо объект, верните точку пересечения
-        if (intersects.length > 0) {
-          return intersects[0].point;
-        }
-
-        // Если луч не пересекает ни одного объекта, верните null
-        return null;
-      }
-      //---------------------------------------------
-
       function init() {
         const container = document.getElementById("container");
 
@@ -209,14 +151,15 @@
         addMarkers(panoramas[currentPanorama].markers);
 
         window.addEventListener("resize", onWindowResize, false);
-        window.addEventListener("mousedown", onDocumentMouseDown, false);
-        window.addEventListener("mousemove", onDocumentMouseMove, false);
+        // window.addEventListener("mousedown", onDocumentMouseDown, false);//есть в OrbitControls
+        // window.addEventListener("mousemove", onDocumentMouseMove, false);//есть в OrbitControls
         window.addEventListener("mouseup", onDocumentMouseUp, false);
         window.addEventListener("wheel", onDocumentMouseWheel, {
           passive: true,
         });
         window.addEventListener("mousedown", onMouseDown, false); // Привязка события mousedown к onMouseDown
       }
+      //------------------------------
 
       // Позиционирование камеры
       camera.position.z = 5;
@@ -228,7 +171,8 @@
       controls.screenSpacePanning = false;
       controls.minDistance = 1;
       controls.maxDistance = 500;
-      controls.maxPolarAngle = Math.PI / 2;
+      controls.minPolarAngle = 0; // ограничить вращение сверху до горизонтальной плоскости (пол)
+      controls.maxPolarAngle = 2.96706; // ограничить вращение снизу до примерно 170 градусов
 
       // Анимация
       function animate() {
@@ -238,19 +182,146 @@
       }
       animate();
 
-      // Обновление рендера при изменении размера окна
-      window.addEventListener("resize", function () {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+      //---------------------------------------------------
+
+      const rouletteModeOnOff = document.getElementById("rouletteModeOnOff");
+      rouletteModeOnOff.addEventListener("click", () => {
+        rouletteMode = !rouletteMode;
+        controls.enabled = !rouletteMode; // отключаем OrbitControls в рулеточном режиме
+        if (rouletteMode) {
+          rouletteModeOnOff.style.backgroundColor = "yellow";
+          console.log("rouletteModeOn");
+        } else {
+          rouletteModeOnOff.style.backgroundColor = "transparent";
+          console.log("rouletteModeOFF");
+        }
       });
-      //------------------------------
+
+      const lineClear = document.getElementById("lineClear");
+      lineClear.addEventListener("click", () => {
+        if (line) {
+          scene.remove(line);
+          line = null;
+          points = [];
+        }
+      });
+
+      function addRouletteMarkers(markers) {
+        markers.forEach((marker) => {
+          const markerGeometry = new THREE.SphereGeometry(10, 32, 32);
+          const markerMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffff00, //lime 0x00FF00
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.5,
+          });
+          const markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
+
+          const markerLat = marker.lat;
+          const markerLon = marker.lon;
+          const markerPhi = THREE.Math.degToRad(90 - markerLat);
+          const markerTheta = THREE.Math.degToRad(markerLon);
+
+          markerMesh.position.x =
+            500 * Math.sin(markerPhi) * Math.cos(markerTheta);
+          markerMesh.position.y = 500 * Math.cos(markerPhi);
+          markerMesh.position.z =
+            500 * Math.sin(markerPhi) * Math.sin(markerTheta);
+
+          scene.add(markerMesh);
+          rouletteMarkers.push(markerMesh);
+        });
+      }
+
+      function makeTextSprite(message, x, y, z) {
+        let canvas = document.createElement("canvas");
+        let context = canvas.getContext("2d");
+        context.font = "24px Arial";
+        context.fillStyle = "rgba(255, 255, 255, 1)";
+        context.fillText(message, 0, 50);
+
+        let texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+
+        let spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+        let sprite = new THREE.Sprite(spriteMaterial);
+        sprite.position.set(x, y, z);
+
+        return sprite;
+      }
+
+      let raycaster = new THREE.Raycaster(); // создаем Raycaster
+      let mouse = new THREE.Vector2(); // создаем вектор для хранения координат мыши
+
+      function onMouseClick(event) {
+        // добавить проверку на наличие пересечений перед тем, как обращаться к intersects[0].
+        if (!rouletteMode) return;
+        // Проверяем, был ли клик сделан на одной из кнопок
+        if (
+          event.target.id === "rouletteModeOnOff" ||
+          event.target.id === "lineClear"
+        ) {
+          return;
+        }
+
+        // переводим координаты мыши в нормализованные координаты от -1 до 1
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        // обновляем направление луча с учетом координат мыши и проекции камеры
+        raycaster.setFromCamera(mouse, camera);
+        let objectsToCheck = [];
+        // получаем массив всех объектов сцены, которые пересекает луч
+        let intersects = raycaster.intersectObjects(scene.children);
+
+        if (intersects.length > 0) {
+          let point = intersects[0].point; // координаты точки пересечения с первым объектом
+          points.push(point);
+
+          //создать линию между ними и добавить текстовый спрайт
+          if (points.length === 2) {
+            let point1 = points[0];
+            let point2 = points[1];
+
+            line = new THREE.Line(
+              new THREE.BufferGeometry().setFromPoints(points),
+              new THREE.LineBasicMaterial({ color: 0xffff00 }) //yellow
+            );
+            scene.add(line);
+
+            // Вычисляем среднюю точку и расстояние между точками
+            let midPoint = new THREE.Vector3();
+            midPoint.addVectors(point1, point2).multiplyScalar(0.5);
+            let distance = point1.distanceTo(point2);
+            console.log("distance", distance);
+
+            // Создаем текстовый спрайт и добавляем его на сцену
+            let sprite = makeTextSprite(
+              distance.toString(),
+              midPoint.x,
+              midPoint.y,
+              midPoint.z
+            );
+            scene.add(sprite);
+            // Reset points array for next line
+            points = [];
+          }
+          let marker = {
+            lat: point.x,
+            lon: point.y,
+          };
+          addRouletteMarkers([marker]);
+        }
+      }
+
+      window.addEventListener("click", onMouseClick);
+      //---------------------------------------------
 
       function addMarkers(markers) {
         markers.forEach((marker) => {
           const markerGeometry = new THREE.SphereGeometry(10, 32, 32);
           const markerMaterial = new THREE.MeshBasicMaterial({
-            color: 0xff0000,
+            color: 0xff0000, //red
             side: THREE.DoubleSide,
             transparent: true,
             opacity: 0.5,
@@ -297,23 +368,23 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
 
-      function onDocumentMouseDown(event) {
-        event.preventDefault();
-        isUserInteracting = true;
-        onPointerDownPointerX = event.clientX;
-        onPointerDownPointerY = event.clientY;
-        onPointerDownLon = lon;
-        onPointerDownLat = lat;
-      }
+      // function onDocumentMouseDown(event) {//есть в OrbitControls
+      //   event.preventDefault();
+      //   isUserInteracting = true;
+      //   onPointerDownPointerX = event.clientX;
+      //   onPointerDownPointerY = event.clientY;
+      //   onPointerDownLon = lon;
+      //   onPointerDownLat = lat;
+      // }
 
-      function onDocumentMouseMove(event) {
-        if (isUserInteracting) {
-          lon =
-            (onPointerDownPointerX - event.clientX) * 0.1 + onPointerDownLon;
-          lat =
-            (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
-        }
-      }
+      // function onDocumentMouseMove(event) {//есть в OrbitControls
+      //   if (isUserInteracting) {
+      //     lon =
+      //       (onPointerDownPointerX - event.clientX) * 0.1 + onPointerDownLon;
+      //     lat =
+      //       (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
+      //   }
+      // }
 
       function onDocumentMouseUp() {
         isUserInteracting = false;
