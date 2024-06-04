@@ -233,30 +233,13 @@
         });
       }
 
-      function makeTextSprite(message, x, y, z) {
-        let canvas = document.createElement("canvas");
-        let context = canvas.getContext("2d");
-        context.font = "24px Arial";
-        context.fillStyle = "rgba(255, 255, 255, 1)";
-        context.fillText(message, 0, 50);
-
-        let texture = new THREE.Texture(canvas);
-        texture.needsUpdate = true;
-
-        let spriteMaterial = new THREE.SpriteMaterial({ map: texture });
-        let sprite = new THREE.Sprite(spriteMaterial);
-        sprite.position.set(x, y, z);
-
-        return sprite;
-      }
-
       let raycaster = new THREE.Raycaster(); // создаем Raycaster
       let mouse = new THREE.Vector2(); // создаем вектор для хранения координат мыши
 
       function onMouseClick(event) {
         // добавить проверку на наличие пересечений перед тем, как обращаться к intersects[0].
         if (!rouletteMode) return;
-        // Проверяем, был ли клик сделан на одной из кнопок
+        // Проверяем, не был ли клик сделан на одной из кнопок
         if (
           event.target.id === "rouletteModeOnOff" ||
           event.target.id === "lineClear"
@@ -283,10 +266,9 @@
             let point1 = points[0];
             let point2 = points[1];
 
-            line = new THREE.Line(
-              new THREE.BufferGeometry().setFromPoints(points),
-              new THREE.LineBasicMaterial({ color: 0xffff00 }) //yellow
-            );
+            let geometry = new THREE.BufferGeometry().setFromPoints(points);
+            let material = new THREE.LineBasicMaterial({ color: 0xffff00 });
+            let line = new THREE.LineSegments(geometry, material);
             scene.add(line);
 
             // Вычисляем среднюю точку и расстояние между точками
@@ -315,6 +297,23 @@
       }
 
       window.addEventListener("click", onMouseClick);
+
+      function makeTextSprite(message, x, y, z) {
+        let canvas = document.createElement("canvas");
+        let context = canvas.getContext("2d");
+        context.font = "24px Arial";
+        context.fillStyle = "rgba(255, 255, 255, 1)";
+        context.fillText(message, 0, 50);
+
+        let texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+
+        let spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+        let sprite = new THREE.Sprite(spriteMaterial);
+        sprite.position.set(x, y, z);
+
+        return sprite;
+      }
       //---------------------------------------------
 
       function addMarkers(markers) {

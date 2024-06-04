@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { GLTFLoader, PLYLoader } from "three/examples/jsm/Addons.js"; //PLYExporter
+import { MTLLoader, PLYLoader } from "three/examples/jsm/Addons.js"; //PLYExporter
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import {
   CSS2DRenderer,
@@ -41,30 +41,51 @@ controls.enableDamping = true;
 
 const pickableObjects = [];
 
-const loader = new GLTFLoader();
-loader.load(
-  "/models/1089/1187_1024_with_ceiling.ply",
-  function (gltf) {
-    gltf.scene.traverse(function (child) {
-      if (child.isMesh) {
-        const m = child;
-        switch (m.name) {
-          case "Plane":
-            m.receiveShadow = true;
-            break;
-          default:
-            m.castShadow = true;
-        }
-        pickableObjects.push(m);
+// const loader = new GLTFLoader();
+// loader.load(
+//   "/models/1089/1187_1024_with_ceiling.ply",
+//   function (gltf) {
+//     gltf.scene.traverse(function (child) {
+//       if (child.isMesh) {
+//         const m = child;
+//         switch (m.name) {
+//           case "Plane":
+//             m.receiveShadow = true;
+//             break;
+//           default:
+//             m.castShadow = true;
+//         }
+//         pickableObjects.push(m);
+//       }
+//     });
+//     scene.add(gltf.scene);
+//   },
+//   function (xhr) {
+//     console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+//   },
+//   function (error) {
+//     console.log(error);
+//   }
+// );
+
+const mtlLoader = new MTLLoader(); //THREE.
+mtlLoader.setResourcePath("/assets/");
+mtlLoader.setPath("/assets/");
+mtlLoader.load(
+  "df576acba3c64a398eb1ce61c644ff9e_50k.mtl",
+  function (materials) {
+    materials.preload();
+
+    const objLoader = new OBJLoader(); //THREE.
+    objLoader.setMaterials(materials);
+    objLoader.setPath("/assets/");
+    objLoader.load(
+      "df576acba3c64a398eb1ce61c644ff9e_50k.obj",
+      function (object) {
+        scene.add(object);
+        object.position.x -= 2.5;
       }
-    });
-    scene.add(gltf.scene);
-  },
-  function (xhr) {
-    console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
-  },
-  function (error) {
-    console.log(error);
+    );
   }
 );
 
