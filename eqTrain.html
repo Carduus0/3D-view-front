@@ -190,6 +190,7 @@
         controls.enabled = !rouletteMode; // отключаем OrbitControls в рулеточном режиме
         if (rouletteMode) {
           rouletteModeOnOff.style.backgroundColor = "yellow";
+          window.addEventListener("click", onRouletteMouseClick);
           console.log("rouletteModeOn");
         } else {
           rouletteModeOnOff.style.backgroundColor = "transparent";
@@ -233,10 +234,10 @@
         });
       }
 
-      let raycaster = new THREE.Raycaster(); // создаем Raycaster
-      let mouse = new THREE.Vector2(); // создаем вектор для хранения координат мыши
+      let rouletteRay = new THREE.Raycaster(); // создаем Raycaster
+      let rouletteMouse = new THREE.Vector2(); // создаем вектор для хранения координат мыши
 
-      function onMouseClick(event) {
+      function onRouletteMouseClick(event) {
         // добавить проверку на наличие пересечений перед тем, как обращаться к intersects[0].
         if (!rouletteMode) return;
         // Проверяем, не был ли клик сделан на одной из кнопок
@@ -248,14 +249,14 @@
         }
 
         // переводим координаты мыши в нормализованные координаты от -1 до 1
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        rouletteMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        rouletteMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
         // обновляем направление луча с учетом координат мыши и проекции камеры
-        raycaster.setFromCamera(mouse, camera);
+        rouletteRay.setFromCamera(rouletteMouse, camera);
         let objectsToCheck = [];
         // получаем массив всех объектов сцены, которые пересекает луч
-        let intersects = raycaster.intersectObjects(scene.children);
+        let intersects = rouletteRay.intersectObjects(scene.children);
 
         if (intersects.length > 0) {
           let point = intersects[0].point; // координаты точки пересечения с первым объектом
@@ -296,7 +297,7 @@
         }
       }
 
-      window.addEventListener("click", onMouseClick);
+      // window.addEventListener("click", onRouletteMouseClick);
 
       function makeTextSprite(message, x, y, z) {
         let canvas = document.createElement("canvas");

@@ -125,7 +125,7 @@ class MeasurementGizmo extends Object3D {
         this.text.setBorder("1px solid #FF0000");
         this.text.setOpacity("0.9");
         this.text.setStyle("font", [
-          "normal normal normal 32px/normal 'Arial', sans-serif",
+          "normal normal normal 24px/normal 'Arial', sans-serif",
         ]);
         this.text.setStyle("overflow", ["hidden"]);
         this.container.add(this.text);

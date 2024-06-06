@@ -1,15 +1,23 @@
-import * as THREE from "https://cdn.skypack.dev/three@0.136.0";
-import { OrbitControls } from "https://cdn.skypack.dev/three@0.136.0/examples/jsm/controls/OrbitControls";
-import { PLYLoader } from "https://cdn.skypack.dev/three@0.136.0/examples/jsm/loaders/PLYLoader";
+import * as THREE from "three";
+import {
+  OrbitControls,
+  MTLLoader,
+  PLYLoader,
+  OBJLoader,
+} from "three/examples/jsm/Addons.js";
 var scene = new THREE.Scene();
 var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
 camera.position.setScalar(10);
 var renderer = new THREE.WebGLRenderer({
   antialias: true,
 });
-renderer.setClearColor(0x404040);
+// renderer.setClearColor(0x404040); //green
 var canvas = renderer.domElement;
 document.body.appendChild(canvas);
+// const renderer = new THREE.WebGLRenderer();
+// renderer.shadowMap.enabled = true;
+// renderer.setSize(window.innerWidth, window.innerHeight);
+// document.body.appendChild(renderer.domElement);
 
 var controls = new OrbitControls(camera, canvas);
 
@@ -18,24 +26,42 @@ light.position.setScalar(10);
 scene.add(light);
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-var loader = new PLYLoader();
-loader.load(
-  "https://threejs.org/examples/models/ply/ascii/dolphins.ply",
-  function (geometry) {
-    //geometry.computeVertexNormals();
+// var loader = new PLYLoader();
+// loader.load("./assets/dolphins.ply", function (geometry) {
+//   //geometry.computeVertexNormals();
 
-    var material = new THREE.MeshStandardMaterial({
-      color: 0x0055ff,
-      flatShading: true,
-    });
-    var mesh = new THREE.Mesh(geometry, material);
+//   var material = new THREE.MeshStandardMaterial({
+//     color: 0x0055ff,
+//     flatShading: true,
+//   });
+//   var mesh = new THREE.Mesh(geometry, material);
 
-    mesh.position.y = -0.2;
-    mesh.position.z = 0.3;
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.scale.multiplyScalar(0.01);
+//   mesh.position.y = -0.2;
+//   mesh.position.z = 0.3;
+//   mesh.rotation.x = -Math.PI / 2;
+//   mesh.scale.multiplyScalar(0.01);
 
-    scene.add(mesh);
+//   scene.add(mesh);
+// });
+
+const mtlLoader = new MTLLoader(); //THREE.
+mtlLoader.setResourcePath("/assets/");
+mtlLoader.setPath("/assets/");
+mtlLoader.load(
+  "df576acba3c64a398eb1ce61c644ff9e_50k.mtl",
+  function (materials) {
+    materials.preload();
+
+    const objLoader = new OBJLoader(); //THREE.
+    objLoader.setMaterials(materials);
+    objLoader.setPath("/assets/");
+    objLoader.load(
+      "df576acba3c64a398eb1ce61c644ff9e_50k.obj",
+      function (object) {
+        scene.add(object);
+        object.position.x -= 2.5;
+      }
+    );
   }
 );
 
